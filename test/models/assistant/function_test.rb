@@ -124,7 +124,7 @@ class Assistant::FunctionTest < ActiveSupport::TestCase
   test "deletes are destructive and idempotent, and a function without a declaration has no annotations" do
     user = users(:family_admin)
 
-    [ Assistant::Function::DeleteTransaction, Assistant::Function::DeleteCategory ].each do |function_class|
+    [ Assistant::Function::DeleteTransaction, Assistant::Function::DeleteCategory, Assistant::Function::DeleteRule ].each do |function_class|
       assert_equal({ readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
         function_class.new(user).annotations)
     end

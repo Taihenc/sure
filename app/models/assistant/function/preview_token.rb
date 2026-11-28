@@ -9,8 +9,8 @@
 # record, by another user, after the target changed, or after PREVIEW_TOKEN_TTL.
 #
 # Used by apply_rule (see RuleSupport) and by the tools that delete or undo
-# data (delete_transaction, delete_category, unmatch_transfer), which preview
-# when called without a token (confirm_with_preview).
+# data (delete_transaction, delete_category, delete_rule, unmatch_transfer),
+# which preview when called without a token (confirm_with_preview).
 module Assistant::Function::PreviewToken
   PREVIEW_TOKEN_TTL = 30.minutes
 

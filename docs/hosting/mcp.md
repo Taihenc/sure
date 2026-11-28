@@ -168,7 +168,7 @@ At the time of writing, `tools/list` includes:
 | `preview_rule` | Match count and a sample of matching transactions for a saved rule or an unsaved definition, without changing anything |
 | `create_rule` / `update_rule` | Save a rule definition. Rules are always saved inactive, and changing an active rule's conditions or actions deactivates it. AI-backed actions are not available |
 | `apply_rule` | Activate a rule and apply it. Requires the `preview_token` from `preview_rule`, `create_rule` or `update_rule` (never `get_rules`; it expires after 30 minutes) and refuses if the rule or its matches have changed; keeps hand-set values unless `override_locked: true` |
-| `delete_rule` | Delete an inactive rule with its conditions, actions and run history, returning what was deleted. An active rule must first be deactivated with `update_rule` |
+| `delete_rule` | Delete a rule with its conditions, actions and run history, returning what was deleted. [Previews first](#deletes-preview-first) |
 | `import_bank_statement` | Import bank statement data |
 | `search_family_files` | Search documents uploaded through the import flow. Note this is the vector-store document index, not the Statement Vault — statements archived via `upload_account_statement` are not searchable through it |
 
@@ -186,12 +186,12 @@ Every tool in `tools/list` carries MCP [tool annotations](https://modelcontextpr
 
 ### Deletes preview first
 
-`delete_transaction`, `delete_category` and `unmatch_transfer` take two calls, like `apply_rule`:
+`delete_transaction`, `delete_category`, `delete_rule` and `unmatch_transfer` take two calls, like `apply_rule`:
 
-1. Call without `preview_token`. Nothing changes. The result has `deleted: false` (`unmatched: false` for `unmatch_transfer`), a `preview` of what would go and a `preview_token`. The preview is the transaction, with a split's children or, for a transfer leg, the transfer, its other leg and the fee transactions deleted with it; the category with its transaction count, replacement, subcategories, budget allocations and the recurring bills left uncategorized; or the transfer with the fee transactions it would delete and whether the pairing would be rejected. An entry in an account the caller cannot open shows only `account: "another account"`, and a category's bills are listed only where the caller can open their accounts (`uncategorized_bill_count` counts them all).
+1. Call without `preview_token`. Nothing changes. The result has `deleted: false` (`unmatched: false` for `unmatch_transfer`), a `preview` of what would go and a `preview_token`. The preview is the transaction, with a split's children or, for a transfer leg, the transfer, its other leg and the fee transactions deleted with it; the category with its transaction count, replacement, subcategories, budget allocations and the recurring bills left uncategorized; the rule, whether it is active and how many runs its history holds; or the transfer with the fee transactions it would delete and whether the pairing would be rejected. An entry in an account the caller cannot open shows only `account: "another account"`, and a category's bills are listed only where the caller can open their accounts (`uncategorized_bill_count` counts them all).
 2. Call again with the same arguments and that `preview_token` to make the change.
 
-The token is bound to the user, the record and what the preview showed, and expires after 30 minutes. A token for another record, user or tool, or an expired one, returns `preview_required`. The confirming call locks the record and rebuilds the preview before it writes; if that differs from what the token was issued for (a changed transaction, split or fee; for a category, also a different `replacement_id`, new transactions or bills in it; for a transfer, a different `reject` or a new fee), the call returns `preview_stale` with a fresh preview and token. In every one of these cases nothing changes.
+The token is bound to the user, the record and what the preview showed, and expires after 30 minutes. A token for another record, user or tool, or an expired one, returns `preview_required`. The confirming call locks the record and rebuilds the preview before it writes; if that differs from what the token was issued for (a changed transaction, split or fee; for a category, also a different `replacement_id`, new transactions or bills in it; for a rule, any edit or a new run; for a transfer, a different `reject` or a new fee), the call returns `preview_stale` with a fresh preview and token. In every one of these cases nothing changes. `delete_rule` also returns `rules_running` while a rule run is in progress.
 
 `delete_transaction` and `unmatch_transfer` refuse a transfer with `transfer_spans_unwritable_account` when one of its fee transactions is in an account the caller cannot write, since deleting a leg or unlinking deletes the fees. The web's transfer unlink refuses the same case.
 
